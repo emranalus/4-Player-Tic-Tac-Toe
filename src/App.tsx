@@ -6,19 +6,21 @@ const FIRST_PLAYER = 1;
 const SECOND_PLAYER = 2;
 const THIRD_PLAYER = 3;
 const FOURTH_PLAYER = 4;
-const GRID_SIZE = 5;
-const PLAYGROUND_SIZE = GRID_SIZE * GRID_SIZE;
-const EMPTY_CELL_VALUE = 9;
+const GRID_SIZE = 5;                                          // 5x5 grid allows more space for 4 players to maneuver
+const PLAYGROUND_SIZE = GRID_SIZE * GRID_SIZE;                // Using a 1D array is simpler for React state updates than a 2D array
+const EMPTY_CELL_VALUE = 9;                                   // Arbitrary value distinct from player IDs (1-4) to represent an empty slot
 const DEFAULT_WINNER_TEXT = 'No one has won yet.';
 
 function App() {
   const [turn, setTurn] = useState<number>(FIRST_PLAYER);
   const [winner, setWinner] = useState<string>(DEFAULT_WINNER_TEXT);
   const [allButtons, setAllButtons] = useState<number[]>(Array(PLAYGROUND_SIZE).fill(EMPTY_CELL_VALUE));
+  // Direct DOM access is needed for the Canvas API to draw fireworks efficiently
   const fireworksRef = useRef<HTMLCanvasElement>(null);
 
   const incrementTurn = () => {
     setTurn(prevTurn => {
+      // Rigid turn structure ensures players always go in the defined order: 1->2->3->4->1
       if (prevTurn === FIRST_PLAYER) return SECOND_PLAYER;
       if (prevTurn === SECOND_PLAYER) return THIRD_PLAYER;
       if (prevTurn === THIRD_PLAYER) return FOURTH_PLAYER;
@@ -28,6 +30,7 @@ function App() {
 
   const getWinnerString = (player: number) => `Player ${player} wins!`;
 
+  // Math allows us to verify columns dynamically without a 2D array structure
   const scanColumns = (colIndex: number, buttons: number[]) => Array.from({ length: GRID_SIZE }, (_, row) => buttons[row * GRID_SIZE + colIndex]);
 
   const topLeftToBottomRightScan = (buttons: number[]) => {
@@ -44,6 +47,7 @@ function App() {
 
   const checkWinnerBatch = (batch: number[]) => {
     const first = batch[0];
+    // We must check for EMPTY_CELL_VALUE because a row of empty cells (9,9,9...) is NOT a win
     if (first !== EMPTY_CELL_VALUE && batch.every(cell => cell === first)) return first;
     return null;
   };
@@ -55,6 +59,7 @@ function App() {
     }
     for (let i = 0; i < GRID_SIZE; i++) {
       const winnerPlayer = checkWinnerBatch(scanColumns(i, buttons));
+      // Immediate return prevents having multiple winners for a single move
       if (winnerPlayer) return winnerPlayer;
     }
     const winnerDiag1 = checkWinnerBatch(topLeftToBottomRightScan(buttons));
@@ -75,6 +80,7 @@ function App() {
       launchFireworks();
       soundManager.playWin();
     } else {
+      // Feedback for every valid move keeps the game feeling responsive
       soundManager.playClick();
     }
 
@@ -101,7 +107,6 @@ function App() {
     return <div className={className}></div>;
   };
 
-  // ---------------- Fireworks Logic ----------------
   const launchFireworks = () => {
     const canvas = fireworksRef.current;
     if (!canvas) return;
@@ -139,10 +144,10 @@ function App() {
     animate();
   };
 
-  // Resize canvas
   useEffect(() => {
     const canvas = fireworksRef.current;
     if (!canvas) return;
+    // Resize canvas to full viewport so fireworks can explode anywhere on screen
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
   }, []);
@@ -154,6 +159,7 @@ function App() {
       <div className="tictactoe-grid">
         {allButtons.map((_, index) => (
           <button key={index} onClick={() => placeMarker(index)}>
+            {/* Visual markers (shapes) are determined solely by the numeric ID in the grid state */}
             {getButtonImage(index)}
           </button>
         ))}
